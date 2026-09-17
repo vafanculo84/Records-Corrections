@@ -1,0 +1,315 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  LEAD_INSTRUCTOR
+  ASSISTANT_CHIEF_FLIGHT_INSTRUCTOR
+  RECORDS
+  ADMIN
+}
+
+enum CorrectionStatus {
+  SUBMITTED
+  PENDING_APPROVAL
+  PENDING_LEAD_INSTRUCTOR_APPROVAL
+  PENDING_ASSISTANT_CHIEF_APPROVAL
+  PENDING_MULTIPLE_APPROVALS
+  APPROVED_PENDING_RECORDS
+  SENT_TO_RECORDS
+  PRINTED_BY_RECORDS
+  ENTERED_INTO_STUDENT_FILE
+  COMPLETED
+  REJECTED
+}
+
+enum SourceOfError {
+  STUDENT_INSTRUCTOR
+  DATA_PROCESSOR
+  OTHER
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SignerRole {
+  CFI
+  LEAD_INSTRUCTOR
+  ASSISTANT_CHIEF_FLIGHT_INSTRUCTOR
+  RECORDS
+  ADMIN
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum AttachmentType {
+  SUPPORTING_DOCUMENTATION_PHOTO
+}
+
+enum UploadedByType {
+  PUBLIC_CFI
+  INTERNAL_USER
+}
+
+model User {
+  id                         String             @id @default(cuid())
+  name                       String
+  email                      String             @unique
+  passwordHash               String             @map("password_hash")
+  role                       UserRole
+  active                     Boolean            @default(true)
+  createdAt                  DateTime           @default(now()) @map("created_at")
+  updatedAt                  DateTime           @updatedAt @map("updated_at")
+  assignedRequests           CorrectionRequest[] @relation("CurrentAssignee")
+  approvals                  Approval[]
+  signatures                 Signature[]
+  assignedRoutingRules       RoutingRule[]      @relation("SpecificRoutingUser")
+  recordsActions             RecordsAction[]
+  uploadedAttachments        RequestAttachment[]
+  auditLogs                  AuditLog[]
+
+  @@map("users")
+}
+
+model CorrectionRequest {
+  id                      String             @id @default(cuid())
+  requestNumber           String             @unique @map("request_number")
+  studentName             String             @map("student_name")
+  studentId               String             @map("student_id")
+  transactionInError      String             @map("transaction_in_error")
+  aircraftRegistration    String             @map("aircraft_registration")
+  sourceOfError           SourceOfError      @map("source_of_error")
+  sourceOtherText         String?            @map("source_other_text")
+  submittedByName         String             @map("submitted_by_name")
+  submittedByEmail        String?            @map("submitted_by_email")
+  instructorIdentifier    String             @map("instructor_identifier")
+  submittedPublicly       Boolean            @default(true) @map("submitted_publicly")
+  status                  CorrectionStatus   @default(SUBMITTED)
+  currentAssigneeUserId   String?            @map("current_assignee_user_id")
+  currentAssigneeRole     UserRole?           @map("current_assignee_role")
+  submittedAt             DateTime           @default(now()) @map("submitted_at")
+  sentToRecordsAt         DateTime?          @map("sent_to_records_at")
+  completedAt             DateTime?          @map("completed_at")
+  createdAt               DateTime           @default(now()) @map("created_at")
+  updatedAt               DateTime           @updatedAt @map("updated_at")
+  currentAssignee         User?              @relation("CurrentAssignee", fields: [currentAssigneeUserId], references: [id], onDelete: SetNull)
+  items                   CorrectionItem[]
+  signatures              Signature[]
+  approvals               Approval[]
+  attachments             RequestAttachment[]
+  recordsAction           RecordsAction?
+  emailLogs               EmailLog[]
+  auditLogs               AuditLog[]
+
+  @@index([status, submittedAt])
+  @@index([studentName])
+  @@index([studentId])
+  @@index([instructorIdentifier])
+  @@index([aircraftRegistration])
+  @@map("correction_requests")
+}
+
+model CorrectionItem {
+  id                          String            @id @default(cuid())
+  correctionRequestId         String            @map("correction_request_id")
+  incorrectItem               String            @map("incorrect_item")
+  customItemLabel             String?           @map("custom_item_label")
+  nowReads                    String?           @map("now_reads")
+  shouldRead                  String            @map("should_read")
+  remarks                     String?
+  requiresAdditionalSignature Boolean           @default(false) @map("requires_additional_signature")
+  requiresDocumentation       Boolean           @default(false) @map("requires_documentation")
+  sortOrder                   Int               @default(0) @map("sort_order")
+  createdAt                   DateTime          @default(now()) @map("created_at")
+  updatedAt                   DateTime          @updatedAt @map("updated_at")
+  correctionRequest           CorrectionRequest @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+
+  @@index([incorrectItem])
+  @@map("correction_items")
+}
+
+model Signature {
+  id                  String            @id @default(cuid())
+  correctionRequestId String            @map("correction_request_id")
+  userId              String?           @map("user_id")
+  signerName          String            @map("signer_name")
+  signerIdentifier    String?           @map("signer_identifier")
+  signerRole          SignerRole        @map("signer_role")
+  signatureImageUrl   String            @map("signature_image_url")
+  signedAt            DateTime          @default(now()) @map("signed_at")
+  ipAddress           String?           @map("ip_address")
+  userAgent           String?           @map("user_agent") @db.Text
+  signatureReason     String            @map("signature_reason")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  correctionRequest   CorrectionRequest @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+  user                User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  approval            Approval?
+
+  @@map("signatures")
+}
+
+model Approval {
+  id                  String            @id @default(cuid())
+  correctionRequestId String            @map("correction_request_id")
+  approverUserId      String?           @map("approver_user_id")
+  approverRole        UserRole          @map("approver_role")
+  status              ApprovalStatus    @default(PENDING)
+  comments            String?           @db.Text
+  signatureRequired   Boolean           @default(false) @map("signature_required")
+  commentsRequired    Boolean           @default(false) @map("comments_required")
+  signed              Boolean           @default(false)
+  signatureId         String?           @unique @map("signature_id")
+  actedAt             DateTime?         @map("acted_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  correctionRequest   CorrectionRequest @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+  approverUser        User?             @relation(fields: [approverUserId], references: [id], onDelete: SetNull)
+  signature           Signature?        @relation(fields: [signatureId], references: [id], onDelete: SetNull)
+
+  @@index([approverRole, status])
+  @@index([approverUserId, status])
+  @@map("approvals")
+}
+
+model RequestAttachment {
+  id                  String            @id @default(cuid())
+  correctionRequestId String            @map("correction_request_id")
+  fileName            String            @map("file_name")
+  fileUrl             String            @map("file_url")
+  mimeType            String            @map("mime_type")
+  fileSize            Int               @map("file_size")
+  attachmentType      AttachmentType    @map("attachment_type")
+  uploadedByType      UploadedByType    @map("uploaded_by_type")
+  uploadedByUserId    String?           @map("uploaded_by_user_id")
+  uploadedAt          DateTime          @default(now()) @map("uploaded_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  correctionRequest   CorrectionRequest @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+  uploadedByUser      User?             @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([correctionRequestId])
+  @@map("request_attachments")
+}
+
+model RoutingRule {
+  id                         String        @id @default(cuid())
+  name                       String
+  correctionItem             String?       @map("correction_item")
+  sourceOfError              SourceOfError? @map("source_of_error")
+  instructorIdentifier       String?       @map("instructor_identifier")
+  requiredRole               UserRole?     @map("required_role")
+  requiredSpecificUserId     String?       @map("required_specific_user_id")
+  signatureRequired          Boolean       @default(false) @map("signature_required")
+  commentsRequired           Boolean       @default(false) @map("comments_required")
+  sendToRecordsAfterApproval Boolean       @default(true) @map("send_to_records_after_approval")
+  sendDirectlyToRecords      Boolean       @default(false) @map("send_directly_to_records")
+  sortOrder                  Int           @default(100) @map("sort_order")
+  active                     Boolean       @default(true)
+  createdAt                  DateTime      @default(now()) @map("created_at")
+  updatedAt                  DateTime      @updatedAt @map("updated_at")
+  requiredSpecificUser       User?         @relation("SpecificRoutingUser", fields: [requiredSpecificUserId], references: [id], onDelete: SetNull)
+
+  @@index([active, sortOrder])
+  @@map("routing_rules")
+}
+
+model FormFieldConfig {
+  id                   String    @id @default(cuid())
+  fieldKey             String    @unique @map("field_key")
+  fieldLabel           String    @map("field_label")
+  fieldType            String    @map("field_type")
+  required             Boolean   @default(false)
+  active               Boolean   @default(true)
+  requiresNowReads     Boolean   @default(false) @map("requires_now_reads")
+  requiresSignature    Boolean   @default(false) @map("requires_signature")
+  requiresApprovalRole UserRole? @map("requires_approval_role")
+  sortOrder            Int       @default(0) @map("sort_order")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("form_field_configs")
+}
+
+model RecordsAction {
+  id                          String            @id @default(cuid())
+  correctionRequestId         String            @unique @map("correction_request_id")
+  recordsUserId               String?           @map("records_user_id")
+  correctionPerformedByName   String?           @map("correction_performed_by_name")
+  pdfSentAt                   DateTime?          @map("pdf_sent_at")
+  printedAt                   DateTime?          @map("printed_at")
+  enteredIntoFileAt           DateTime?          @map("entered_into_file_at")
+  completedAt                 DateTime?          @map("completed_at")
+  notes                       String?            @db.Text
+  createdAt                   DateTime           @default(now()) @map("created_at")
+  updatedAt                   DateTime           @updatedAt @map("updated_at")
+  correctionRequest           CorrectionRequest @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+  recordsUser                 User?             @relation(fields: [recordsUserId], references: [id], onDelete: SetNull)
+
+  @@map("records_actions")
+}
+
+model EmailLog {
+  id                  String            @id @default(cuid())
+  correctionRequestId String            @map("correction_request_id")
+  recipientEmail      String            @map("recipient_email")
+  recipientRole       UserRole?         @map("recipient_role")
+  subject             String
+  status              EmailStatus       @default(PENDING)
+  sentAt              DateTime?         @map("sent_at")
+  errorMessage        String?           @map("error_message") @db.Text
+  createdAt           DateTime          @default(now()) @map("created_at")
+  correctionRequest   CorrectionRequest @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+
+  @@map("email_logs")
+}
+
+model AuditLog {
+  id                      String             @id @default(cuid())
+  correctionRequestId     String?            @map("correction_request_id")
+  userId                  String?            @map("user_id")
+  publicActorName         String?            @map("public_actor_name")
+  publicActorIdentifier   String?            @map("public_actor_identifier")
+  action                  String
+  previousStatus          CorrectionStatus?  @map("previous_status")
+  newStatus               CorrectionStatus?  @map("new_status")
+  comments                String?            @db.Text
+  ipAddress               String?            @map("ip_address")
+  userAgent               String?            @map("user_agent") @db.Text
+  createdAt               DateTime           @default(now()) @map("created_at")
+  correctionRequest       CorrectionRequest? @relation(fields: [correctionRequestId], references: [id], onDelete: Cascade)
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([correctionRequestId, createdAt])
+  @@map("audit_logs")
+}
+
+model EmailSetting {
+  id                         String   @id @default("default")
+  recordsRecipientEmail      String   @default("records@example.com") @map("records_recipient_email")
+  approvalNotifications      Boolean  @default(true) @map("approval_notifications")
+  recordsNotifications       Boolean  @default(true) @map("records_notifications")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  @@map("email_settings")
+}
+
+model RequestCounter {
+  key       String   @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("request_counters")
+}

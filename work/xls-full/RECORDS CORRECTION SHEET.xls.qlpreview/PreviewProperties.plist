@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AllowJavascript</key>
+	<true/>
+	<key>AllowNetworkAccess</key>
+	<false/>
+	<key>Attachments</key>
+	<dict>
+		<key>CA863802-202D-49CB-902A-46A742369C62/spreadsheet.css</key>
+		<dict>
+			<key>AttachmentData</key>
+			<data>
+			Ym9keSB7CiAgICBmb250LWZhbWlseTogQXJpYWw7CiAgICBmb250
+			LXNpemU6IDEwOwp9Cgp0ZCB7CiAgICB3aGl0ZS1zcGFjZTogcHJl
+			OwogICAgZm9udC1mYW1pbHk6IEFyaWFsOwogICAgZm9udC1zaXpl
+			OiAxMDsKfQoKcCB7CiAgICBtYXJnaW46MDsKfQoKdGFibGUud29y
+			a3NoZWV0IHsKICAgIGJvcmRlci1jb2xsYXBzZTpjb2xsYXBzZTsK
+			ICAgIHRhYmxlLWxheW91dDogZml4ZWQ7Cn0KCkBtZWRpYSBzY3Jl
+			ZW4gewogICAgLnNob3dHcmlkbGluZXMsIC5zaG93R3JpZGxpbmVz
+			IHRkLCAuc2hvd0dyaWRsaW5lcyB0aCB7CiAgICAgICAgYm9yZGVy
+			OiB0aGluIHNvbGlkICNkMmQyZGY7CiAgICB9Cn0K
+			</data>
+			<key>DumpedAttachmentFileName</key>
+			<string>Attachment1.css</string>
+			<key>MimeType</key>
+			<string>text/css</string>
+			<key>TextEncoding</key>
+			<string>UTF-8</string>
+		</dict>
+	</dict>
+	<key>BaseBundlePath</key>
+	<string>/System/Library/QuickLook/Office.qlgenerator</string>
+	<key>Height</key>
+	<real>745</real>
+	<key>MimeType</key>
+	<string>text/html</string>
+	<key>ShouldNotScale</key>
+	<true/>
+	<key>TextEncoding</key>
+	<string>UTF-8</string>
+	<key>Width</key>
+	<real>576</real>
+</dict>
+</plist>

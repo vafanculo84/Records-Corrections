@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "flight-school-records-correction",
+  "runtime": "docker-compose",
+  "composeFile": "docker-compose.base44.yml",
+  "service": "app",
+  "port": 3000,
+  "healthCheckPath": "/records-correction"
+}
